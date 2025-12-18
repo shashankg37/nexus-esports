@@ -1,38 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { GamingCard } from "@/components/GamingCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Calendar, BarChart3, Clock, MapPin, Users } from "lucide-react";
+import { toast } from "sonner";
+import { authApi, matchesApi, leaderboardApi, tournamentsApi } from "@/lib/api";
 
 const PlayerDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("matches");
+  const [matches, setMatches] = useState<any[]>([]);
+  const [fixtures, setFixtures] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
 
-  const handleLogout = () => {
-    navigate("/player/login");
+  useEffect(() => {
+    loadMyMatches();
+    loadLeaderboard();
+    loadTournaments();
+  }, []);
+
+  useEffect(() => {
+    if (selectedTournamentId) {
+      loadFixtures(selectedTournamentId);
+    }
+  }, [selectedTournamentId]);
+
+  const loadMyMatches = async () => {
+    try {
+      const data = await matchesApi.getMyMatches();
+      setMatches(data);
+    } catch (error) {
+      toast.error("Failed to load matches");
+    }
   };
 
-  const matches = [
-    { id: 1, opponent: "Team Alpha", time: "2:00 PM", date: "Today", status: "Live", map: "Dust II" },
-    { id: 2, opponent: "Team Beta", time: "4:30 PM", date: "Tomorrow", status: "Scheduled", map: "Mirage" },
-    { id: 3, opponent: "Team Gamma", time: "6:00 PM", date: "Dec 2", status: "Scheduled", map: "Inferno" },
-  ];
+  const loadFixtures = async (tournamentId: number) => {
+    try {
+      const data = await matchesApi.getFixtures(tournamentId);
+      setFixtures(data);
+    } catch (error) {
+      toast.error("Failed to load fixtures");
+    }
+  };
 
-  const fixtures = [
-    { round: "Quarter Finals", team1: "You", team2: "Team Delta", date: "Dec 5" },
-    { round: "Semi Finals", team1: "TBD", team2: "TBD", date: "Dec 8" },
-    { round: "Finals", team1: "TBD", team2: "TBD", date: "Dec 10" },
-  ];
+  const loadLeaderboard = async () => {
+    try {
+      const data = await leaderboardApi.get();
+      setLeaderboard(data);
+    } catch (error) {
+      toast.error("Failed to load leaderboard");
+    }
+  };
 
-  const leaderboard = [
-    { rank: 1, player: "ProGamer_X", wins: 45, losses: 12, points: 1850 },
-    { rank: 2, player: "You", wins: 38, losses: 15, points: 1720 },
-    { rank: 3, player: "EliteSniper", wins: 35, losses: 18, points: 1650 },
-    { rank: 4, player: "TacticalAce", wins: 32, losses: 20, points: 1580 },
-    { rank: 5, player: "StealthKing", wins: 30, losses: 22, points: 1520 },
-  ];
+  const loadTournaments = async () => {
+    try {
+      const data = await tournamentsApi.getAll();
+      setTournaments(data);
+      if (data.length > 0) {
+        setSelectedTournamentId(data[0].id);
+      }
+    } catch (error) {
+      toast.error("Failed to load tournaments");
+    }
+  };
+
+  const handleLogout = () => {
+    authApi.logout();
+    navigate("/player/login");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +92,7 @@ const PlayerDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Total Matches</p>
-                <p className="text-3xl font-display font-bold text-foreground">53</p>
+                <p className="text-3xl font-display font-bold text-foreground">{matches.length}</p>
               </div>
               <Trophy className="h-10 w-10 text-primary" />
             </div>
@@ -62,8 +101,10 @@ const PlayerDashboard = () => {
           <GamingCard glow>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
-                <p className="text-3xl font-display font-bold text-primary">72%</p>
+                <p className="text-sm text-muted-foreground mb-1">Upcoming</p>
+                <p className="text-3xl font-display font-bold text-primary">
+                  {matches.filter(m => m.status === "Scheduled" || m.status === "Live").length}
+                </p>
               </div>
               <BarChart3 className="h-10 w-10 text-primary" />
             </div>
@@ -73,7 +114,9 @@ const PlayerDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Current Rank</p>
-                <p className="text-3xl font-display font-bold text-foreground">#2</p>
+                <p className="text-3xl font-display font-bold text-foreground">
+                  #{leaderboard.findIndex(p => p.player === "You") + 1 || "N/A"}
+                </p>
               </div>
               <Trophy className="h-10 w-10 text-primary" />
             </div>
@@ -101,36 +144,46 @@ const PlayerDashboard = () => {
             <GamingCard>
               <h2 className="text-2xl font-display font-bold mb-6 text-foreground">Upcoming Matches</h2>
               <div className="space-y-4">
-                {matches.map((match) => (
-                  <div
-                    key={match.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-smooth"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`px-3 py-1 rounded-full text-xs font-display font-semibold ${
-                        match.status === "Live" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                      }`}>
-                        {match.status}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">vs {match.opponent}</p>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {match.time}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {match.map}
-                          </span>
+                {matches.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No matches scheduled</p>
+                ) : (
+                  matches.map((match) => (
+                    <div
+                      key={match.id}
+                      className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-smooth"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`px-3 py-1 rounded-full text-xs font-display font-semibold ${
+                          match.status === "Live" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                        }`}>
+                          {match.status}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {match.team1_name} vs {match.team2_name}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                            {match.scheduled_at && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {new Date(match.scheduled_at).toLocaleString()}
+                              </span>
+                            )}
+                            {match.room_code && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {match.room_code}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <Button variant="gaming" size="sm">
+                        View Details
+                      </Button>
                     </div>
-                    <Button variant="gaming" size="sm">
-                      View Details
-                    </Button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </GamingCard>
           </TabsContent>
@@ -138,23 +191,55 @@ const PlayerDashboard = () => {
           <TabsContent value="fixtures">
             <GamingCard>
               <h2 className="text-2xl font-display font-bold mb-6 text-foreground">Tournament Bracket</h2>
-              <div className="space-y-4">
-                {fixtures.map((fixture, index) => (
-                  <div
-                    key={index}
-                    className="p-6 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-smooth"
+              {tournaments.length > 0 && (
+                <div className="mb-4">
+                  <select
+                    value={selectedTournamentId || ""}
+                    onChange={(e) => setSelectedTournamentId(parseInt(e.target.value))}
+                    className="w-full h-10 px-3 rounded-md bg-secondary border border-border text-foreground focus:border-primary transition-smooth"
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-display font-bold text-lg text-primary">{fixture.round}</h3>
-                      <span className="text-sm text-muted-foreground">{fixture.date}</span>
+                    {tournaments.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="space-y-4">
+                {fixtures.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No fixtures available</p>
+                ) : (
+                  fixtures.map((fixture, index) => (
+                    <div
+                      key={fixture.id || index}
+                      className="p-6 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-smooth"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-display font-bold text-lg text-primary">Match #{fixture.id}</h3>
+                        {fixture.scheduled_at && (
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(fixture.scheduled_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground font-semibold">{fixture.team1_name}</span>
+                        <span className="text-primary font-display">VS</span>
+                        <span className="text-foreground font-semibold">{fixture.team2_name}</span>
+                      </div>
+                      {fixture.status && (
+                        <div className="mt-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            fixture.status === "Completed" ? "bg-green-500/20 text-green-500" :
+                            fixture.status === "Live" ? "bg-primary/20 text-primary" :
+                            "bg-muted text-muted-foreground"
+                          }`}>
+                            {fixture.status}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-foreground font-semibold">{fixture.team1}</span>
-                      <span className="text-primary font-display">VS</span>
-                      <span className="text-foreground font-semibold">{fixture.team2}</span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </GamingCard>
           </TabsContent>

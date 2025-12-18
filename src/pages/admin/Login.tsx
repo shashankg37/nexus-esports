@@ -6,19 +6,37 @@ import { Label } from "@/components/ui/label";
 import { GamingCard } from "@/components/GamingCard";
 import { Shield, Mail, Lock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/lib/api";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authApi.login(email, password);
+      // Verify user role is admin
+      const user = await authApi.getMe();
+      if (user.role !== "admin") {
+        authApi.logout();
+        toast.error("Access denied. Admin role required.");
+        return;
+      }
       toast.success("Admin login successful!");
       navigate("/admin/panel");
-    } else {
-      toast.error("Please fill in all fields");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,8 +97,14 @@ const AdminLogin = () => {
               />
             </div>
 
-            <Button type="submit" variant="gaming" className="w-full" size="lg">
-              Access Control Panel
+            <Button 
+              type="submit" 
+              variant="gaming" 
+              className="w-full" 
+              size="lg"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Access Control Panel"}
             </Button>
           </form>
         </GamingCard>

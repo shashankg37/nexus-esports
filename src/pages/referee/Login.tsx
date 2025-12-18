@@ -6,19 +6,37 @@ import { Label } from "@/components/ui/label";
 import { GamingCard } from "@/components/GamingCard";
 import { Flag, Mail, Lock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/lib/api";
 
 const RefereeLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authApi.login(email, password);
+      // Verify user role is referee
+      const user = await authApi.getMe();
+      if (user.role !== "referee") {
+        authApi.logout();
+        toast.error("Access denied. Referee role required.");
+        return;
+      }
       toast.success("Referee login successful!");
       navigate("/referee/control");
-    } else {
-      toast.error("Please fill in all fields");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,8 +97,14 @@ const RefereeLogin = () => {
               />
             </div>
 
-            <Button type="submit" variant="gaming" className="w-full" size="lg">
-              Enter Control Room
+            <Button 
+              type="submit" 
+              variant="gaming" 
+              className="w-full" 
+              size="lg"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Enter Control Room"}
             </Button>
           </form>
         </GamingCard>
