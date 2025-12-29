@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,7 @@ const PlayerLogin = () => {
     <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center">
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent animate-pulse-glow" />
-      
+
       <div className="relative z-10 w-full max-w-md px-4">
         <Button
           variant="ghost"
@@ -97,16 +97,28 @@ const PlayerLogin = () => {
               />
             </div>
 
-            <Button 
-              type="submit" 
-              variant="gaming" 
-              className="w-full" 
+            <Button
+              type="submit"
+              variant="gaming"
+              className="w-full"
               size="lg"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Enter Arena"}
             </Button>
           </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-muted-foreground">
+              Don't have an account?{" "}
+              <Link
+                to="/player/register"
+                className="text-primary hover:underline font-medium"
+              >
+                Register
+              </Link>
+            </p>
+          </div>
         </GamingCard>
       </div>
     </div>
