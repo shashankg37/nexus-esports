@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\SHASHANK G\OneDrive\Desktop\NEXUS_ARENA\nexus-backend\venv
+set VIRTUAL_ENV=C:\Users\SHASHANK G\OneDrive\Desktop\projects\NexusArena\nexus-esports\nexus-backend\venv
 
 if not defined PROMPT set PROMPT=$P$G
 
